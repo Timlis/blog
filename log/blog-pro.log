@@ -1,0 +1,6 @@
+2020-06-03 23:35:23.615  INFO 26593 --- [restartedMain] com.timlis.BlogApplication               : Starting BlogApplication on TimedeMacBook-Pro.local with PID 26593 (/Users/time/IDEA_CODE/blog/target/classes started by time in /Users/time/IDEA_CODE/blog)
+2020-06-03 23:35:23.617  INFO 26593 --- [restartedMain] com.timlis.BlogApplication               : The following profiles are active: pro
+2020-06-03 23:35:25.388  WARN 26593 --- [restartedMain] com.zaxxer.hikari.util.DriverDataSource  : Registered driver with driverClassName=com.mysql.jdbc.Driver was not found, trying direct instantiation.
+2020-06-03 23:35:25.925  WARN 26593 --- [restartedMain] JpaBaseConfiguration$JpaWebConfiguration : spring.jpa.open-in-view is enabled by default. Therefore, database queries may be performed during view rendering. Explicitly configure spring.jpa.open-in-view to disable this warning
+2020-06-03 23:35:26.134  WARN 26593 --- [restartedMain] ion$DefaultTemplateResolverConfiguration : Cannot find template location: classpath:/templates/ (please add some templates or check your Thymeleaf configuration)
+2020-06-03 23:35:26.284  INFO 26593 --- [restartedMain] com.timlis.BlogApplication               : Started BlogApplication in 3.078 seconds (JVM running for 3.773)
