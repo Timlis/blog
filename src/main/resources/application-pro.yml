@@ -1,9 +1,9 @@
 spring:
   datasource:
     driver-class-name: com.mysql.cj.jdbc.Driver
-    url: jdbc:mysql://localhost:3306/blog?useUnicode=true&characterEncoding=utf-8&serverTimezone=Asia/Shanghai
+    url: jdbc:mysql://172.81.215.217:3306/blog?useUnicode=true&characterEncoding=utf-8&serverTimezone=Asia/Shanghai
     username: root
-    password: root
+    password: 333666
   data:
     elasticsearch:
       repositories:
@@ -13,14 +13,11 @@ spring:
   jpa:
     hibernate:
       ddl-auto: update
-    show-sql: true
-  redis:
-    host: localhost
-    port: 6379
+    show-sql: false
 logging:
   level:
     root: warn
-    com.timlis: info
+    com.timlis: ERROR
   file: log/blog-dev.log
 server:
   port: 80

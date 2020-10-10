@@ -1,5 +1,6 @@
-package com.timlis.interceptor;
+package com.timlis.config;
 
+import com.timlis.interceptor.LoginInterceptor;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.web.servlet.config.annotation.InterceptorRegistry;
 import org.springframework.web.servlet.config.annotation.ResourceHandlerRegistry;

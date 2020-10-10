@@ -59,7 +59,11 @@ public class BlogServiceImpl implements BlogService {
         return blogRepository.getOne(id);
     }
 
-
+    /**
+     * 主页点击博客查看博客详细内容
+     * @param id
+     * @return
+     */
     @Override
     public Blog getAndConvert(Long id) {
         Optional<Blog> optional = blogRepository.findById(id);
@@ -70,10 +74,9 @@ public class BlogServiceImpl implements BlogService {
 
 
         //更新浏览数
-        Integer views = getViewFromRedis(id) + 1;
-        System.out.println("Timlisviews" + views);
-        blogRepository.updateViews(id, views);
-
+        Integer view = addViewFromRedis(id);
+        System.out.println(id + " now views is " + view);
+        blog.setViews(view);
 
         Blog b = new Blog();
         BeanUtils.copyProperties(blog, b);
@@ -82,17 +85,57 @@ public class BlogServiceImpl implements BlogService {
         return b;
     }
 
-    private Integer getViewFromRedis(Long id){
-        if (redisTemplate.opsForValue().get(id) == null){
-            Optional<Blog> optional = blogRepository.findById(id);
-            Integer views = optional.get().getViews();
-            redisTemplate.opsForValue().set(id,views);
-            return views;
-        }else {
-            return (Integer) redisTemplate.opsForValue().get(id);
-        }
+    /***
+     * 设置views从redis中获取
+     * @param blogPage
+     * @return
+     */
+    private Page<Blog> setViews(Page<Blog> blogPage){
+        List<Blog> content = blogPage.getContent();
+        content.forEach(blog -> {blog.setViews(getViewFromRedis(blog.getId()));});
+        return new PageImpl<>(content);
     }
 
+    /**
+     * 从Redis中获取浏览量并且+1，如果为null，则从数据库中获取
+     * @param id
+     * @return
+     */
+    private Integer addViewFromRedis(Long id) {
+        if (redisTemplate.opsForValue().get(String.valueOf(id)) == null) {
+            Optional<Blog> optional = blogRepository.findById(id);
+            Integer views = optional.get().getViews();
+            System.out.println("get view from mysql");
+            redisTemplate.opsForValue().set(String.valueOf(id), views);
+            redisTemplate.opsForValue().increment(String.valueOf(id),1);
+        } else {
+            System.out.println("get view from reids");
+            redisTemplate.opsForValue().increment(String.valueOf(id),1);
+        }
+        return (Integer) redisTemplate.opsForValue().get(String.valueOf(id));
+    }
+
+    /**
+     * 从Redis中获取浏览量并且，如果为null，则从数据库中获取
+     * @param id
+     * @return
+     */
+    private Integer getViewFromRedis(Long id) {
+        if (redisTemplate.opsForValue().get(String.valueOf(id)) == null) {
+            Optional<Blog> optional = blogRepository.findById(id);
+            Integer views = optional.get().getViews();
+            System.out.println("get view from mysql");
+            redisTemplate.opsForValue().set(String.valueOf(id), views);
+        }
+        return (Integer) redisTemplate.opsForValue().get(String.valueOf(id));
+    }
+
+    /**
+     * 搜索
+     * @param pageable
+     * @param blog
+     * @return
+     */
     @Override
     public Page<Blog> listBlog(Pageable pageable, ClientBlog blog) {
         return blogRepository.findAll(new Specification<Blog>() {
@@ -115,12 +158,23 @@ public class BlogServiceImpl implements BlogService {
         }, pageable);
     }
 
-
+    /**
+     * 主页显示所有博客列表
+     * @param pageable
+     * @return
+     */
     @Override
     public Page<Blog> listBlog(Pageable pageable) {
-        return blogRepository.findAll(pageable);
+
+        return setViews(blogRepository.findAll(pageable));
     }
 
+    /**
+     * 搜索
+     * @param query
+     * @param pageable
+     * @return
+     */
     @Override
     public Page<Blog> listBlog(String query, Pageable pageable) {
         return blogRepository.findByQuery(query, pageable);
@@ -138,6 +192,13 @@ public class BlogServiceImpl implements BlogService {
         }, pageable);
     }
 
+    /**
+     * 从ElsaticSerach中搜索博客
+     * @param keywords
+     * @param pageable
+     * @return
+     * @throws IOException
+     */
     @Override
     public Page<EsBlog> listBlogFromEalsticSearch(String keywords, Pageable pageable) throws IOException {
 
@@ -197,6 +258,11 @@ public class BlogServiceImpl implements BlogService {
         return blogPage;
     }
 
+    /**
+     * 列出推荐博客
+     * @param size
+     * @return
+     */
     @Override
     public List<Blog> listRecommendBlog(Integer size) {
         Sort sort = Sort.by(Sort.Direction.DESC, "updateTime");
@@ -205,6 +271,11 @@ public class BlogServiceImpl implements BlogService {
     }
 
 
+    /**
+     * 添加博客
+     * @param blog
+     * @return
+     */
     @Override
     public Blog saveBlog(Blog blog) {
         if (blog.getId() == null) {
@@ -217,7 +288,7 @@ public class BlogServiceImpl implements BlogService {
         }
         addBlogsToElastic(blog);
 
-        if (esBlogRepository.findById(blog.getId())!=null){
+        if (esBlogRepository.findById(blog.getId()) != null) {
             esBlogRepository.deleteById(blog.getId());
         }
 
@@ -238,6 +309,12 @@ public class BlogServiceImpl implements BlogService {
         return blogRepository.save(blog);
     }
 
+    /**
+     * 更新博客
+     * @param id
+     * @param blog
+     * @return
+     */
     @Override
     public Blog updateBlog(Long id, Blog blog) {
         Blog b = blogRepository.getOne(id);
@@ -265,12 +342,20 @@ public class BlogServiceImpl implements BlogService {
         return blogRepository.save(b);
     }
 
+    /**
+     * 删除博客
+     * @param id
+     */
     @Override
     public void deleteBlog(Long id) {
         esBlogRepository.deleteById(id);
         blogRepository.deleteById(id);
     }
 
+    /**
+     * 按时间归档博客
+     * @return
+     */
     @Override
     public Map<String, List<Blog>> archiveBlog() {
         List<String> years = blogRepository.findGroupYear();
@@ -281,12 +366,19 @@ public class BlogServiceImpl implements BlogService {
         return map;
     }
 
+    /**
+     * 统计博客数量
+     * @return
+     */
     @Override
     public Long countBlog() {
         return blogRepository.count();
     }
 
-
+    /**
+     * 添加博客到ElasticSearch中
+     * @param blog
+     */
     private void addBlogsToElastic(Blog blog) {
         EsBlog esBlog = new EsBlog();
         esBlog.setId(blog.getId());

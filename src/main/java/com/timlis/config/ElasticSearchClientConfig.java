@@ -1,4 +1,4 @@
-package com.timlis.interceptor;
+package com.timlis.config;
 
 import org.apache.http.HttpHost;
 import org.elasticsearch.client.RestClient;

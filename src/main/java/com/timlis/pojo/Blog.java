@@ -1,7 +1,6 @@
 package com.timlis.pojo;
 
-import org.springframework.data.elasticsearch.annotations.Field;
-import org.springframework.data.elasticsearch.annotations.FieldType;
+
 
 import javax.persistence.*;
 import java.util.ArrayList;
@@ -15,8 +14,6 @@ public class Blog {
     @Id
     @GeneratedValue
     private Long id;
-    @Field(type = FieldType.Text, searchAnalyzer = "ik_smart",
-            analyzer = "ik_smart")
     private String title;
     private String content;
     private String firstPicture;
@@ -46,8 +43,7 @@ public class Blog {
 
     @ManyToOne
     private User user;
-    @Field(type = FieldType.Text, searchAnalyzer = "ik_smart",
-            analyzer = "ik_smart")
+
     private String description;
 
     public Blog() {
