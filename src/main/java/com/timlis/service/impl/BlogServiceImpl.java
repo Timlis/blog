@@ -10,26 +10,21 @@ import com.timlis.pojo.Type;
 import com.timlis.service.BlogService;
 import com.timlis.util.MarkDownUtils;
 import com.timlis.util.MybeanUtils;
-import org.apache.http.HttpHost;
 import org.elasticsearch.action.search.SearchRequest;
 import org.elasticsearch.action.search.SearchResponse;
 import org.elasticsearch.client.RequestOptions;
-import org.elasticsearch.client.RestClient;
 import org.elasticsearch.client.RestHighLevelClient;
 import org.elasticsearch.common.text.Text;
 import org.elasticsearch.common.unit.TimeValue;
 import org.elasticsearch.index.query.MultiMatchQueryBuilder;
 import org.elasticsearch.index.query.QueryBuilders;
-import org.elasticsearch.index.query.TermQueryBuilder;
 import org.elasticsearch.search.SearchHit;
 import org.elasticsearch.search.builder.SearchSourceBuilder;
 import org.elasticsearch.search.fetch.subphase.highlight.HighlightBuilder;
 import org.elasticsearch.search.fetch.subphase.highlight.HighlightField;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.context.annotation.Bean;
 import org.springframework.data.domain.*;
-import org.springframework.data.elasticsearch.annotations.Field;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
@@ -61,6 +56,7 @@ public class BlogServiceImpl implements BlogService {
 
     /**
      * 主页点击博客查看博客详细内容
+     *
      * @param id
      * @return
      */
@@ -72,10 +68,11 @@ public class BlogServiceImpl implements BlogService {
             throw new NotFoundException("该博客不存在");
         }
 
-
         //更新浏览数
-        Integer view = addViewFromRedis(id);
-        System.out.println(id + " now views is " + view);
+//        Integer view = addViewFromRedis(id);
+//        System.out.println(id + " now views is " + view);
+//        blog.setViews(view);
+        Double view = addViewFromZSet(id);
         blog.setViews(view);
 
         Blog b = new Blog();
@@ -90,48 +87,67 @@ public class BlogServiceImpl implements BlogService {
      * @param blogPage
      * @return
      */
-    private Page<Blog> setViews(Page<Blog> blogPage){
+    private Page<Blog> setViews(Page<Blog> blogPage) {
         List<Blog> content = blogPage.getContent();
-        content.forEach(blog -> {blog.setViews(getViewFromRedis(blog.getId()));});
+        content.forEach(blog -> {
+//            blog.setViews(getViewFromRedis(blog.getId()));
+            blog.setViews(getViewFromZSet(blog.getId()));
+        });
         return new PageImpl<>(content);
     }
 
     /**
      * 从Redis中获取浏览量并且+1，如果为null，则从数据库中获取
+     *
      * @param id
      * @return
      */
     private Integer addViewFromRedis(Long id) {
         if (redisTemplate.opsForValue().get(String.valueOf(id)) == null) {
             Optional<Blog> optional = blogRepository.findById(id);
-            Integer views = optional.get().getViews();
+            Double views = optional.get().getViews();
             System.out.println("get view from mysql");
             redisTemplate.opsForValue().set(String.valueOf(id), views);
-            redisTemplate.opsForValue().increment(String.valueOf(id),1);
+            redisTemplate.opsForValue().increment(String.valueOf(id), 1);
         } else {
             System.out.println("get view from reids");
-            redisTemplate.opsForValue().increment(String.valueOf(id),1);
+            redisTemplate.opsForValue().increment(String.valueOf(id), 1);
         }
         return (Integer) redisTemplate.opsForValue().get(String.valueOf(id));
     }
 
+    private Double addViewFromZSet(Long id) {
+        redisTemplate.opsForZSet().incrementScore("blog", String.valueOf(id), 1);
+        return redisTemplate.opsForZSet().score("blog", String.valueOf(id));
+    }
+
     /**
      * 从Redis中获取浏览量并且，如果为null，则从数据库中获取
+     *
      * @param id
      * @return
      */
     private Integer getViewFromRedis(Long id) {
         if (redisTemplate.opsForValue().get(String.valueOf(id)) == null) {
             Optional<Blog> optional = blogRepository.findById(id);
-            Integer views = optional.get().getViews();
+            Double views = optional.get().getViews();
             System.out.println("get view from mysql");
             redisTemplate.opsForValue().set(String.valueOf(id), views);
         }
         return (Integer) redisTemplate.opsForValue().get(String.valueOf(id));
+
+    }
+
+    private Double getViewFromZSet(Long id){
+        if (redisTemplate.opsForZSet().score("blog", String.valueOf(id)) == null) {
+            redisTemplate.opsForZSet().add("blog", String.valueOf(id), 0);
+        }
+        return redisTemplate.opsForZSet().score("blog", String.valueOf(id));
     }
 
     /**
      * 搜索
+     *
      * @param pageable
      * @param blog
      * @return
@@ -160,6 +176,7 @@ public class BlogServiceImpl implements BlogService {
 
     /**
      * 主页显示所有博客列表
+     *
      * @param pageable
      * @return
      */
@@ -171,6 +188,7 @@ public class BlogServiceImpl implements BlogService {
 
     /**
      * 搜索
+     *
      * @param query
      * @param pageable
      * @return
@@ -194,13 +212,14 @@ public class BlogServiceImpl implements BlogService {
 
     /**
      * 从ElsaticSerach中搜索博客
+     *
      * @param keywords
      * @param pageable
      * @return
      * @throws IOException
      */
     @Override
-    public Page<EsBlog> listBlogFromEalsticSearch(String keywords, Pageable pageable) throws IOException {
+    public Page<EsBlog> listBlogFromElasticSearch(String keywords, Pageable pageable) throws IOException {
 
 
         SearchRequest searchRequest = new SearchRequest("blogsindex");
@@ -260,6 +279,7 @@ public class BlogServiceImpl implements BlogService {
 
     /**
      * 列出推荐博客
+     *
      * @param size
      * @return
      */
@@ -270,9 +290,26 @@ public class BlogServiceImpl implements BlogService {
         return blogRepository.findTop(pageable);
     }
 
+    /**
+     * 列出热搜博客
+     *
+     * @param size
+     * @return
+     */
+    @Override
+    public List<Blog> listHotViewBlog(Integer size) {
+        Set<String> blog = redisTemplate.opsForZSet().reverseRange("blog", 0, size);
+        List<Blog> blogList = new ArrayList<>();
+        for (String o : blog) {
+            blogList.add(blogRepository.getOne(Long.parseLong(o)));
+        }
+        return blogList;
+    }
+
 
     /**
      * 添加博客
+     *
      * @param blog
      * @return
      */
@@ -282,7 +319,7 @@ public class BlogServiceImpl implements BlogService {
 
             blog.setCreateTime(new Date());
             blog.setUpdateTime(new Date());
-            blog.setViews(0);
+//            blog.setViews(0);
         } else {
             blog.setUpdateTime(new Date());
         }
@@ -311,6 +348,7 @@ public class BlogServiceImpl implements BlogService {
 
     /**
      * 更新博客
+     *
      * @param id
      * @param blog
      * @return
@@ -344,6 +382,7 @@ public class BlogServiceImpl implements BlogService {
 
     /**
      * 删除博客
+     *
      * @param id
      */
     @Override
@@ -354,6 +393,7 @@ public class BlogServiceImpl implements BlogService {
 
     /**
      * 按时间归档博客
+     *
      * @return
      */
     @Override
@@ -368,6 +408,7 @@ public class BlogServiceImpl implements BlogService {
 
     /**
      * 统计博客数量
+     *
      * @return
      */
     @Override
@@ -377,6 +418,7 @@ public class BlogServiceImpl implements BlogService {
 
     /**
      * 添加博客到ElasticSearch中
+     *
      * @param blog
      */
     private void addBlogsToElastic(Blog blog) {

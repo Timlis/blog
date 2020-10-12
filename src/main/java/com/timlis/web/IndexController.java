@@ -38,6 +38,7 @@ public class IndexController {
         model.addAttribute("types", typesService.listTypeTop(6));
         model.addAttribute("tags", tagService.listTagTop(10));
         model.addAttribute("recommendBlog", blogService.listRecommendBlog(8));
+        model.addAttribute("hotViewBlog",blogService.listHotViewBlog(4));
         return "index";
     }
 
@@ -55,7 +56,7 @@ public class IndexController {
     public String search(@PageableDefault(size = 5, sort = {"updateTime"}, direction = Sort.Direction.DESC) Pageable pageable,
                          @RequestParam String query, Model model) throws IOException {
 
-        model.addAttribute("page", blogService.listBlogFromEalsticSearch(query,pageable));
+        model.addAttribute("page", blogService.listBlogFromElasticSearch(query,pageable));
         model.addAttribute("query",query);
 
         return "search";

@@ -19,7 +19,7 @@ public class EsBlog implements Serializable {
     private String nickname;
     private String avatar;
     private Date updateTime;
-    private Integer views;
+    private Double views;
     private String type;
     private String firstImage;
 
@@ -71,11 +71,11 @@ public class EsBlog implements Serializable {
         this.updateTime = updateTime;
     }
 
-    public Integer getViews() {
+    public Double getViews() {
         return views;
     }
 
-    public void setViews(Integer views) {
+    public void setViews(Double views) {
         this.views = views;
     }
 

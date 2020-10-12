@@ -22,12 +22,14 @@ public interface BlogService {
 
     Page<Blog> listBlog(String query,Pageable pageable);
 
-    Page<EsBlog> listBlogFromEalsticSearch(String keywords,Pageable pageable) throws IOException;
+    Page<EsBlog> listBlogFromElasticSearch(String keywords,Pageable pageable) throws IOException;
 
 
     Page<Blog> listBlog(Long tagId,Pageable pageable);
 
     List<Blog> listRecommendBlog(Integer size);
+
+    List<Blog> listHotViewBlog(Integer size);
 
     Blog saveBlog(Blog blog);
 
